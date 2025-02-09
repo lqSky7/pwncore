@@ -55,13 +55,15 @@ class Config:
     jwt_valid_duration: int
     hint_penalty: int
     max_members_per_team: int
+    admin_username: str = "admin"
+    admin_password: str = "ds222"  # This should be set via environment variable
 
 
 config = Config(
     development=True,
     # db_url="sqlite://:memory:",
     db_url=os.environ.get("DATABASE_URL", "sqlite://:memory:"),
-    docker_url=None,  # None for default system docker
+	docker_url="http://google.com",  # For testing without Docker
     # Or set it to an arbitrary URL for testing without Docker
     # docker_url="http://google.com",
     flag="C0D",
