@@ -241,7 +241,6 @@ async def delete_team(
         return Response(status_code=HTTP_401_UNAUTHORIZED)
 
     async with in_transaction():
-        # Get team 
         team = await Team.get(id=team_id)
         if not team:
             raise HTTPException(status_code=404, detail="Team not found")
@@ -251,7 +250,7 @@ async def delete_team(
         # TODO: Add container cleanup if teams have active containers
         await team.delete()
 
-    return {"status": "success", "message": f"Team {team_id} deleted with all related data"}
+    return {"status": "success", "message": f"Team {team_id} deleted successfully"}
 
 @router.get("/user/list")
 @atomic()
@@ -259,4 +258,26 @@ async def list_all(
     credentials: HTTPBasicCredentials = Depends(security)):
     if not verify_admin(credentials):
         return Response(status_code=HTTP_401_UNAUTHORIZED)
-    return await User_Pydantic.from_queryset(User.all())
+    users = await User_Pydantic.from_queryset(User.all())
+    return {"status": "success", "message": "Users retrieved successfully", "results": users}
+
+from tortoise.exceptions import IntegrityError, DoesNotExist
+
+@router.delete("/user/{user_id}")
+@atomic()
+async def del_user(
+    user_id: int,
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    if not verify_admin(credentials):
+        return Response(status_code=HTTP_401_UNAUTHORIZED)
+    
+    try:
+        async with in_transaction():
+            user = await User.get(id=user_id)
+            # Delete dependent records first, if you dont do this, internal server error 500
+            await SolvedProblem.filter(team_id=user.team_id).delete()
+            await user.delete()
+            return {"status": "success", "message": f"User {user_id} deleted"}
+    except DoesNotExist:
+        raise HTTPException(status_code=404, detail="User not found")
