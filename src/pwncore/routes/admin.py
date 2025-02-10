@@ -7,6 +7,8 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 from passlib.hash import bcrypt
 from tortoise.transactions import atomic, in_transaction
 from pydantic import BaseModel
+from pwncore.models.user import User, User_Pydantic
+
 
 import pwncore.containerASD as containerASD
 from pwncore.config import config
@@ -251,4 +253,10 @@ async def delete_team(
 
     return {"status": "success", "message": f"Team {team_id} deleted with all related data"}
 
-
+@router.get("/user/list")
+@atomic()
+async def list_all(
+    credentials: HTTPBasicCredentials = Depends(security)):
+    if not verify_admin(credentials):
+        return Response(status_code=HTTP_401_UNAUTHORIZED)
+    return await User_Pydantic.from_queryset(User.all())
