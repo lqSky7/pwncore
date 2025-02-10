@@ -166,8 +166,8 @@ cython_debug/
 **/.vscode/
 **/*.code-workspace
 **/.history/
-
 # Project specific
+**/venv/
 src/pwnccc.txt
 
 src/pwncore/utils.py

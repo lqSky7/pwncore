@@ -1,11 +1,12 @@
 import logging
 from datetime import date
 
-from fastapi import APIRouter, Request, Response, Depends
+from fastapi import APIRouter, Request, Response, Depends, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.status import HTTP_401_UNAUTHORIZED
 from passlib.hash import bcrypt
 from tortoise.transactions import atomic, in_transaction
+from pydantic import BaseModel
 
 import pwncore.containerASD as containerASD
 from pwncore.config import config
@@ -96,6 +97,7 @@ async def calculate_team_coins(
             results.append({"team_id": team.id, "name": team.name, "coins": team.coins})
         
         return {"status": "success", "message": "Team coins calculated successfully", "results": results}
+
 
 @router.get("/create")
 async def init_db(
@@ -225,4 +227,28 @@ async def init_db(
         return {"status": "success", "message": "db init success fr"}
     except Exception as e:
         return {"status": "error", "message": f"bad∂ auth {str(e)}"}
+
+
+@router.delete("/team/{team_id}")
+@atomic()
+async def delete_team(
+    team_id: int,
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    if not verify_admin(credentials):
+        return Response(status_code=HTTP_401_UNAUTHORIZED)
+
+    async with in_transaction():
+        # Get team 
+        team = await Team.get(id=team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+
+        user_tags = await User.filter(team_id=team_id).values_list("tag", flat=True)
+
+        # TODO: Add container cleanup if teams have active containers
+        await team.delete()
+
+    return {"status": "success", "message": f"Team {team_id} deleted with all related data"}
+
 
