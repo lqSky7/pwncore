@@ -1,5 +1,13 @@
 import os
 from dataclasses import dataclass
+from passlib.hash import bcrypt
+import warnings
+from dotenv import load_dotenv
+
+# Put .env in root of pwncore
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
+if not load_dotenv(dotenv_path):
+    warnings.warn(f".env file not loaded from {dotenv_path}", RuntimeWarning)
 
 """
 Sample messages:
@@ -42,6 +50,13 @@ msg_codes = {
     "users_not_found": 24,
 }
 
+raw_admin_hash = os.environ.get("PWNCORE_ADMIN_HASH")
+if (raw_admin_hash is None):
+    admin_hash_value = "$2b$12$BjtKkihGhQlOZuLD/KrmuOP27mJ04ldXyzBgtbrNzD9JoPN/DKN1u"
+    using_default_admin = True
+else:
+    admin_hash_value = raw_admin_hash
+    using_default_admin = False
 
 @dataclass
 class Config:
@@ -55,15 +70,15 @@ class Config:
     jwt_valid_duration: int
     hint_penalty: int
     max_members_per_team: int
-
+    admin_hash: str  # admin hash value passed during instantiation
 
 config = Config(
-    development=True,
+    development=False,
     # db_url="sqlite://:memory:",
     db_url=os.environ.get("DATABASE_URL", "sqlite://:memory:"),
-    docker_url=None,  # None for default system docker
+    # docker_url=None,  # None for default system docker
     # Or set it to an arbitrary URL for testing without Docker
-    # docker_url="http://google.com",
+    docker_url="http://google.com",
     flag="C0D",
     max_containers_per_team=3,
     jwt_secret="mysecret",
@@ -71,4 +86,9 @@ config = Config(
     msg_codes=msg_codes,
     hint_penalty=50,
     max_members_per_team=3,
+    admin_hash=admin_hash_value,  # Use precomputed admin hash
 )
+
+# Warn in production if using the default admin hash derived from "lugvitc"
+if not config.development and using_default_admin and bcrypt.verify("lugvitc", config.admin_hash):
+    warnings.warn("Default admin hash being used in production!", RuntimeWarning)
